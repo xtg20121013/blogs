@@ -47,7 +47,9 @@ docker默认的镜像仓库是要求用https方式的，如果要强制使用htt
 
 启动registry镜像
 
-`docker run -d -p 5000:5000 --restart=always -v /home/docker/registry/data:/var/lib/registry --name registry registry:2.5.1`
+```
+docker run -d -p 5000:5000 --restart=always -v /home/docker/registry/data:/var/lib/registry --name registry registry:2.5.1
+```
 
 访问一下镜像仓库，能访问成功就好了，例如
 
@@ -57,13 +59,14 @@ docker默认的镜像仓库是要求用https方式的，如果要强制使用htt
 
 生成对应用户名密码的存储文件，例如：
 
-`
+```
 sh -c "docker run --entrypoint htpasswd registry:2.5.1 -Bbn shunova shunova[registry] > /home/docker/registry/auth/htpasswd"
-`
+```
 
 将ssl证书放在某目录下，然后启动registry镜像，例如：
-
-`docker run -d -p 5000:5000 --restart=always -v /home/docker/registry/data:/var/lib/registry -v /home/docker/registry/auth:/auth -v /home/docker/registry/certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/xxxx.crt -e REGISTRY_HTTP_TLS_KEY=/certs/xxxxx.key -e REGISTRY_AUTH=htpasswd -e REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm" -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd --name registry registry:2.5.1`
+```
+docker run -d -p 5000:5000 --restart=always -v /home/docker/registry/data:/var/lib/registry -v /home/docker/registry/auth:/auth -v /home/docker/registry/certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/xxxx.crt -e REGISTRY_HTTP_TLS_KEY=/certs/xxxxx.key -e REGISTRY_AUTH=htpasswd -e REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm" -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd --name registry registry:2.5.1
+```
 
 即可使用默认的https方式使用私有镜像
 
@@ -88,8 +91,9 @@ jenkins@iZ2893wjzgyZ:~$ usermod -G docker jenkins
 
 启动镜像时还要把docker和docker.sock挂载到镜像里，这样可以在jenkins中使用docker，例如：
 
-`docker run -d -p 8080:8080 --name jenkins --restart=always -v /home/docker/jenkins_home:/var/jenkins_home -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock -u root jenkins:2.19.4
-`
+```
+docker run -d -p 8080:8080 --name jenkins --restart=always -v /home/docker/jenkins_home:/var/jenkins_home -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock -u root jenkins:2.19.4
+```
 
 然后浏览器访问[ip]:8080,完成jenkins的初始化即可。初始化可能会验证身份，会让你到服务器目录下找个文件，输入文件的内容。这个时候要到启动的jenkins容器内去找。
 
@@ -102,7 +106,9 @@ jenkins@iZ2893wjzgyZ:~$ usermod -G docker jenkins
 
 build maven项目时可以用如下命令：
 
-`docker run -it --rm -v /home/docker/maven/.m2:/root/.m2 -v /home/docker/maven/hello:/usr/src/mymaven -w /usr/src/mymaven maven:3.3.9-jdk-7 mvn clean install`
+```
+docker run -it --rm -v /home/docker/maven/.m2:/root/.m2 -v /home/docker/maven/hello:/usr/src/mymaven -w /usr/src/mymaven maven:3.3.9-jdk-7 mvn clean install
+```
 
 至此，基础环境搭建完成，具体搭建持续集成的过程，我会在下篇博文中继续介绍。
 #####三、一些小坑和题外话
@@ -111,7 +117,9 @@ build maven项目时可以用如下命令：
 
 解决方法1. 启动镜像时添加`-e TZ="Asia/Shanghai" -v /etc/localtime:/etc/localtime:ro`
 
-`docker run -e TZ="Asia/Shanghai" -v /etc/localtime:/etc/localtime:ro --name=tomcat tomcat:8.0.35-jre8`
+```
+docker run -e TZ="Asia/Shanghai" -v /etc/localtime:/etc/localtime:ro --name=tomcat tomcat:8.0.35-jre8
+```
 
 解决方法2. 用Dockerfile构建镜像时添加
 
@@ -129,9 +137,10 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 即可远程使用`docker -H [ip]:7777 ` 调用。
 
 ######3. 题外话
-公司里，我的项目组以前git仓库用的另外一个项目组提供的仓库，有一天，那个仓库突然无法访问了，不是我们维护的，短期也无法解决。可是项目开发不能停啊，而且我早就有想自己搭建一个想法，那就正好。用的[gogs](https://github.com/gogits/gogs)，在Docker Hub里也有[gogs的docker镜像]()，这就很愉快了，
-一键搞定。
+公司里，我的项目组以前git仓库用的另外一个项目组提供的仓库，有一天，那个仓库突然无法访问了，不是我们维护的，短期也无法解决。可是项目开发不能停啊，而且我早就有想自己搭建一个想法，那就正好。用的[gogs](https://github.com/gogits/gogs)，在Docker Hub里也有[gogs的docker镜像](https://hub.docker.com/r/gogs/gogs/)，这就很愉快了，一键搞定。
 
-`docker run --restart=always --name=gogs -d -p 3000:3000 -p 22:22 -v /home/gogs/data:/data gogs/gogs:0.9.97`
+```
+docker run --restart=always --name=gogs -d -p 3000:3000 -p 22:22 -v /home/gogs/data:/data gogs/gogs:0.9.97
+```
 
 docker真的很方便实用。
