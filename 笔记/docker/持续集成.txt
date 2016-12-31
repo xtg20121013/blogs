@@ -1,0 +1,3 @@
+持续集成
+jenkins
+docker -H 10.211.55.11:7777 run -d -p 8080:8080 --name jenkins -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock jenkinsci/jenkins

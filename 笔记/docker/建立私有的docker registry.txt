@@ -1,0 +1,5 @@
+建立私有的docker registry
+docker pull registry
+docker run -p 5000:5000
+在/etc/default/docker中添加,使用http请求
+DOCKER_OPTS="-H 0.0.0.0:7777 -H tcp://127.0.0.1:2375 -H unix:///var/run/docker.sock --insecure-registry 10.211.55.11:5000"

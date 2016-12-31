@@ -1,0 +1,85 @@
+#安装docker（ubuntu14.04）https://docs.docker.com/engine/installation/linux/
+# [官方安装方式]
+sudo apt-get update
+sudo apt-get install apt-transport-https ca-certificates
+sudo apt-key adv \
+               --keyserver hkp://ha.pool.sks-keyservers.net:80 \
+               --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" | sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt-get update
+sudo apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual
+sudo apt-get install docker-engine
+
+# [国内daocloud的脚本，一键安装，国内镜像，速度快]
+curl -sSL https://get.daocloud.io/docker | sh
+
+#私有registy [http get] http://10.211.55.12:5000/v2/_catalog 能访问到表示运行成功
+docker pull registry:2.5.1
+# 或者daocloud的镜像
+docker pull daocloud.io/library/registry:2.5.1
+ 
+sudo mkdir /certs
+sudo sed -i '/^\[ v3_ca \]$/a subjectAltName = IP:192.168.33.18' /etc/ssl/openssl.cnf
+sudo sh -c "openssl req \
+-newkey rsa:4096 -nodes -sha256 -keyout /certs/domain.key \
+-x509 -days 365 -out /certs/domain.crt"
+#填写地区企业单位信息后即可在/certs目录下生产两个证书
+
+#auth认证
+sudo mkdir /home/docker/registry/auth
+sh -c "docker run --entrypoint htpasswd registry:2.5.1 -Bbn shunova shunova[registry] > /home/docker/registry/auth/htpasswd"
+
+docker run -d -p 5000:5000 --restart=always -v /home/docker/registry/data:/var/lib/registry -v /home/docker/registry/auth:/auth -v /home/docker/registry/certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/1_registry.8844it.com_bundle.crt -e REGISTRY_HTTP_TLS_KEY=/certs/2_registry.8844it.com.key -e REGISTRY_AUTH=htpasswd -e REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm" -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd --name registry  registry.8844it.com:5000/ydb/registry:2.5.1
+
+[client 添加签名文件 如果是自签证书需要]
+sudo sed -i '$d' /etc/default/docker
+sudo mkdir -p /etc/docker/certs.d/10.211.55.12:5000/
+sudo scp vagrant@192.168.33.18:/certs/domain.crt /etc/docker/certs.d/192.168.33.18:5000/ca.crt
+sudo service docker restart
+docker login -u shunova -p shunova[registry] registry.8844it.com:5000
+
+
+
+#mysql
+docker pull mysql:5.7.16
+docker run -d -p 3306:3306 --name mysql --restart=always -v /home/docker/mysql/data:/var/lib/mysql -v /home/docker/mysql/conf.d:/etc/mysql/conf.d -e MYSQL_USER=shunova -e MYSQL_PASSWORD=shunova[db] registry.8844it.com:5000/ydb/mysql:5.7.16
+docker exec -it 5652455b4112 /bin/bash
+mysql -u root -p
+GRANT ALL PRIVILEGES ON *.* TO 'shunova'@'%'  IDENTIFIED BY 'shunova[db]'  WITH GRANT OPTION;
+flush privileges;
+
+#mongodb
+docker pull mongo:3.2.11
+docker run -d -p 27017:27017 --name mongo --restart=always -v /home/docker/mongodb/mongod.conf:/etc/mongod.conf -v /home/docker/mongodb/db:/data/db -v /home/docker/mongodb/logs:/var/log/mongodb registry.8844it.com:5000/ydb/mongo:3.2.11 -f /etc/mongod.conf
+docker exec -it f72 mongo admin
+db.createUser({ user: 'shunova', pwd: 'shunova[db]', roles: [ { role: "userAdminAnyDatabase", db: "admin" } ] });
+
+#项目构建机
+
+#maven
+docker pull maven:3.3.9-jdk-7
+docker run -it --rm -v /home/docker/maven/.m2:/root/.m2 -v /home/docker/maven/hello:/usr/src/mymaven -w /usr/src/mymaven maven:3.3.9-jdk-7 mvn clean install
+
+#jenkins 
+docker pull jenkins:2.19.4
+#在/etc/default/docker中添加
+DOCKER_OPTS="-H 0.0.0.0:7777 -H tcp://127.0.0.1:2375 -H unix:///var/run/docker.sock"
+docker run -d -p 8080:8080 --name jenkins --restart=always -v /home/docker/jenkins_home:/var/jenkins_home -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock jenkins:2.19.4
+#在容器内尝试 可否使用docker ps，如果提示Cannot connect to the Docker daemon，就用-H 连接吧 或者 docker run时 -u root
+docker run -d -p 8080:8080 --name jenkins --restart=always -v /home/docker/jenkins_home:/var/jenkins_home -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock -u root registry.8844it.com:5000/ydb/jenkins:2.19.4
+
+#docker 容器的时区问题 （Dockerfile中加入）
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+#tomcat+nginx+supervisor
+docker pull tomcat:7.0.73-jre7
+build相关镜像
+
+docker run -d -p 80:80 --link mysql:mysql --link mongo:mongo -e YDB_MYSQL_URL=jdbc:mysql://mysql:3306/ydb.new?characterEncoding=utf-8 -e YDB_MYSQL_USER=shunova -e YDB_MYSQL_PASSWORD=shunova[db] -e YDB_MONGO_HOST=mongo -e YDB_MONGO_USER=shunova -e YDB_MONGO_PASSWORD=shunova[db] --name ydb_app ydb_app:1.0.0
+
+#swarm集群
+DOCKER_OPTS="-H 0.0.0.0:7777 -H tcp://127.0.0.1:2375 -H unix:///var/run/docker.sock --label label_name=ydb_docker_1"
+
+#gogs
+docker run --restart=always --name=gogs -d -p 3000:3000 -p 3022:22 -v /home/gogs/data:/data registry.8844it.com:5000/ydb/gogs:0.9.97

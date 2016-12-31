@@ -1,0 +1,19 @@
+Dockfile相关命令
+FROM
+MAINTAINER
+ENV
+RUN
+ADD
+COPY
+EXPOSE
+VOLUME
+
+ENTRYPOINT [运行容器后，执行的语句，仅且执行Dockerfile里的最后一句]
+可以有三种方式使用
+1.ENTRYPOINT ["executable","param1","param2"] (像json里的数组)
+2.ENTRYPOINT excutable param1 param2 （像cmd命令）
+3.docker run --entrypoint=xxx (会覆盖Dockerfile里的ENTRYPOINT)
+
+CMD [与ENTRYPOINT区别： 可以被docker run 后的 命令覆盖]
+
+ONBUILD
