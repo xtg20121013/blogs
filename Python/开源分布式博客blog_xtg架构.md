@@ -26,7 +26,7 @@
 	#下载config.py并编辑相关配置（修改数据库、redis、日志等）
 	curl -o xxx/config.py https://raw.githubusercontent.com/xtg20121013/blog_xtg/master/config.py
 	#通过docker启动后即可访问
-	docker run -d -p 80:80 --restart=always --name blog_xtg -v xxx/config.py:/home/xtg/blog-xtg/config.py daocloud.io/xtg20121013/blog_xtg:master
+	docker run -d -p 80:80 --restart=always --name blog_xtg -v xxx/config.py:/home/xtg/blog-xtg/config.py daocloud.io/xtg20121013/blog_xtg:latest
 这个镜像启动时包含两个server实例(一主一从)+nginx(动静分离、负载均衡)+supervisor(进程管理)，当然你也可以根据自己的需求构建镜像，Dockerfile在项目/docker目录下。
 ####2. 构建运行环境
 ######需要安装以下组件：
@@ -43,6 +43,8 @@
 ######创建数据库
 ######启动redis
 ######修改config.py，配置数据库、redis、日志等
+######创建数据库或更新表
+	python main.py upgradedb
 ######启动server
 	python main.py --master=true --port=8888
 
