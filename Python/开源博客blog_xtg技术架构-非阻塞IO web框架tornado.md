@@ -1,6 +1,6 @@
 >[blog_xtg](https://github.com/xtg20121013/blog_xtg)是我个人写的一个开源分布式博客，其web框架使用的就是tornado，以下这篇博文就简单介绍下tornado在blog_xtg中的使用。
 
-######Tornado简介
+####Tornado简介
 Tornado 是一个Python web框架和异步网络库，起初由 FriendFeed(后该公司被facebook收购，目前tornado由facebook开发维护)开发。由于非阻塞的特性，他在处理Http长连接、websocket等保持连接时间较长的请求时，并发能力很强。
 
 
@@ -13,7 +13,7 @@ Tornado 大体上可以被分为4个主要的部分:
 
 我之所以选用tornado，主要因为目前非阻塞IO的框架在近几年的web技术中特别火，比如node.js，而tornado依靠底层基于epoll(Linux)或者kqueue(BSD和MAC OSX)的IOLoop实现非阻塞IO，而且经过FriendFeed的实践，已经证明他是绝对优秀可靠的非阻塞IO框架，再加上他协程特性，让基于他的异步代码可以像阻塞多线程框架的同步代码一样易读易维护。
 
-######Tornado在blog_xtg中的使用
+####Tornado在blog_xtg中的使用
 目前，我在项目的开发环境中使用的是tornado4.4.1版本。
 
 项目主要的配置已经集中到[config.py](https://github.com/xtg20121013/blog_xtg/blob/master/config.py)中,部分参数可以通过命令行参数修改。
@@ -42,9 +42,11 @@ tornado.web.RequestHandler的生命周期是initialize() -> prepare() -> get()/p
 
 总的来说，tornado的配置很简单，代码也很少，比起java spring mvc 配置一大堆的xml简便多了，不过这也是python的主要优势。
 
-######Tornado多实例部署可能会遇到的问题
+####Tornado多实例部署可能会遇到的问题
+#####1. 单线程server
 tornado不仅仅是一个web framework，他还是一个简易的web server，这让他可以直接作为一个server来接收处理http请求，而不需要依靠wsgi容器。但是这个webserver过于简单，只支持单进程，所以在生产环境中，官方推荐的多进程多主机部署，启动多个tornado server实例分别监听不同端口，在上层通过类似nginx的成熟高效的http server来做负载均衡，将请求转发到合适端口的tornado实例中。（[参考tornado官方文档运行部署篇](http://www.tornadoweb.org/en/stable/guide/running.html)）
 
+#####2. session
 tornado本没有实现session，因为他是解决C10K这类高并发问题，由于cpython，作为一个单线程的server无法利用多核的特性，所以官方推荐多进程多实例甚至多主机部署以此来充分利用多核心来处理高并发，一般跨进程的session同步势必用到第三方工具，所以tornado实现单实例的session没有太大的意义。
 
 blog_xtg中的session是通过cookie+redis来实现的，可以跨进程同步session。
